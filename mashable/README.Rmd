@@ -118,14 +118,14 @@ Hint 1: Recall that if we have an outcome vector `Y` and a vector of predictions
 ```{r}
 # make up 100 data points
 Y <- rnorm(100)
-p <- unif(100)
+p <- runif(100)
 
 # mean squared-error
 mse <- mean((Y - p)^2)
 
 # make up 100 binary outcomes and predictions
-Y <- rbinom(n, 1, 0.5)
-p <- runif(n, 0, 1)
+Y <- rbinom(100, 1, 0.5)
+p <- runif(100, 0, 1)
 
 # negative log-likelihood
 nloglik <- - mean(Y*log(p) + (1-Y)*log(1-p))
