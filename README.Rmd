@@ -1,0 +1,717 @@
+---
+title: "Introduction to Machine Learning"
+author: "David Benkeser"
+date: "June 27, 2018"
+output: github_document
+---
+
+<!-- README.md is generated from README.Rmd. Please edit that file -->
+
+```{r, echo = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  fig.path = "README-"
+)
+```
+
+## Introduction
+
+In this demonstration, we will illustrate some basic principals discussed in class using `R`. 
+
+## Preliminaries 
+You can execute the following commands to install the packages needed to complete this demo.
+
+```{r installpack, message=FALSE}
+# if needed, install all the necessary pacakges to execute this demo
+pkgs <- c("SuperLearner", "randomForest", "RCurl", "MASS",
+          "ggplot2")
+installed_pacakges <- row.names(installed.packages())
+
+for(p in pkgs){
+  # check if p is installed
+  already_installed <- p %in% installed_pacakges 
+  # if not install it
+  if(!already_installed){
+    install.packages(p)
+  }
+  # load package
+  library(p, character.only = TRUE)
+}
+```
+
+I have made a data set available on GitHub that will be used in this demo. It can be read directly from GitHub using the following commands: 
+
+```{r loaddat, message=FALSE}
+web_address <- getURL("https://raw.githubusercontent.com/benkeser/sllecture/master/chspred.csv")
+full_data <- read.csv(text = web_address, header = TRUE)
+```
+
+We can take a look at the data to make sure it is loaded properly:
+
+```{r headdat, message = FALSE}
+# head displays the first six rows of data
+head(full_data)
+# tail displays the last six rows of data
+tail(full_data)
+# display the number of observations in the data
+nrow(full_data)
+# display the number of columns in the data 
+ncol(full_data)
+```
+
+The column `mi` is an indicator of myocardial infarction (heart attack); all other variables can be considered features. These include demographic, medical, and other information on participants. We will use these data to predict myocardial infarction. 
+
+## Prediction with logistic regression
+
+Our first exercise is to use logistic regression to predict myocardial infarction. We will consider two logistic regression models. The first regresses on `waist`, `smoke`, and `hdl`; the second regresses on all variables. We will fit these regression models using the full data and estimate their mean squared-error using the full data. 
+
+First, we train the two logistic regressions using the full data and generate prediction functions (i.e., machines) from which we can generate new predictions.   
+
+```{r glmfits, message = FALSE}
+# model 1 -- all variables
+# the mi ~ . formula fits a main terms logistic regression model
+model1 <- glm(mi ~ waist + smoke + hdl, data = full_data, family = "binomial")
+# can look at the results
+summary(model1)
+# we can now use model1 to make a "machine", i.e., a function 
+# that takes as input features of a new observation and outputs 
+# a predicted probability of say Psi1 
+Psi1_longway <- function(new_waist, new_smoke, new_hdl, model){
+  # extract beta hats from model
+  beta0 <- model$coef[1]
+  beta1 <- model$coef[2]
+  beta2 <- model$coef[3]
+  beta3 <- model$coef[4]
+  # plogis is the inverse logit function
+  # i.e., we compute expit(b0 + b1 * waist + ...)
+  prediction <- plogis(beta0 + beta1 * new_waist + beta2 * new_smoke + beta3 * new_hdl)
+  # return the prediction
+  return(as.numeric(prediction))
+}
+
+# try it out on some new data
+Psi1_longway(new_waist = 90, new_smoke = 0, new_hdl = 50, model = model1)
+Psi1_longway(new_waist = 100, new_smoke = 0, new_hdl = 40, model = model1)
+Psi1_longway(new_waist = mean(full_data$waist), 
+             new_smoke = 1, 
+             new_hdl = mean(full_data$hdl), model = model1)
+
+# we can instead make use of the predict method for glm for a more 
+# concise version. here new_features is a data.frame a la full_data
+Psi1 <- function(new_features, model){
+  # call the predict method
+  # type = "response" ensures we get back the expit of the linear predictor
+  prediction <- predict(model, newdata = new_features, type = 'response')
+  return(as.numeric(prediction))
+}
+
+# try it out on some new data
+new_features1 <- data.frame(waist = 90, smoke = 0, hdl = 50)
+Psi1(new_features = new_features1, model = model1)
+new_features2 <- data.frame(waist = 100, smoke = 0, hdl = 40)
+Psi1(new_features = new_features2, model = model1)
+# also works with multiple rows
+new_features3 <- data.frame(waist = c(100,110), smoke = c(0,1), hdl = c(40,60))
+Psi1(new_features = new_features3, model = model1)
+
+# model 2 -- all variables 
+model2 <- glm(mi ~ ., data = full_data, family = "binomial")
+
+#================================================
+# Exercise 1:
+#================================================
+# a. Write a function like Psi1 that predicts for 
+# new data based on model2.
+# Psi2 <- function(...){
+#  
+#
+#}
+#
+# b. Use the function to predict on these the new
+# features defined below in predict_me 
+predict_me <- data.frame(t(colMeans(full_data[,1:(ncol(full_data)-1)])))
+#
+# c (Bonus!). What values did I put in predict_me?
+```
+
+Now, we can compute the mean squared-error for the two logistic regressions using the full_data. 
+
+```{r fulldatamse}
+# use Psi1 to obtain predictions on the full data set
+Psi1_allW <- Psi1(new_features = full_data, model = model1)
+# just for fun, check out some features
+summary(Psi1_allW)
+hist(Psi1_allW)
+# now compute the MSE in a way that matches formulas
+# presented in class
+# how many observations?
+n <- nrow(full_data)
+# outcome
+Y <- full_data$mi
+# estimate
+mse_Psi1 <- 1/n * sum((Y - Psi1_allW)^2)
+mse_Psi1
+# or a one-liner
+mse_Psi1 <- mean((full_data$mi - Psi1_allW)^2)
+mse_Psi1
+
+#================================================
+# Exercise 2:
+#================================================
+# a. Compute the estimated MSE for Psi2. 
+# mse_Psi2 <- ... 
+#
+# b. (Bonus!) Negative log-likelihood loss is an alternative
+# loss function, L(psi,o) = -log(psi^y + (1-psi)^(1-y)). 
+# Compute the estimated average negative log-likelihood for
+# both Psi1 and Psi2. 
+```
+
+As discussed in class, using the same data to train algorithms as to evaluate them leads to overly optimistic estimates of performance. This fact motivated the use of cross-validation. Here, we use  two-fold cross-validation to estimate the MSE of the two logistic regression models. 
+
+```{r crossval}
+# first we assign a split for each of the n observations
+# here, we use the first half of data as one split, the second
+# half of the data as the other split
+split <- sort(rep(c(1,2),round(n/2,0)))
+# take a look to make sure the right number in each split
+table(split)
+
+# now define first training sample and validation sample
+train1 <- full_data[split == 1,]
+valid1 <- full_data[split == 2,]
+
+# similarly, reverse their roles
+train2 <- full_data[split == 2,]
+valid2 <- full_data[split == 1,]
+
+# now fit model1 using only train1 data
+model1_train1 <- glm(mi ~ waist + smoke + hdl, data = train1, family = "binomial")
+# take a peak
+model1_train1
+
+# now we will evaluate MSE in valid1
+# note we can still use the Psi1 function, but just change
+# the model statement
+Psi1_valid1W <- Psi1(new_features = valid1, model = model1_train1)
+# take a peak
+head(Psi1_valid1W)
+# compute the MSE
+mse_Psi1_valid1 <- mean((valid1$mi - Psi1_valid1W)^2)
+
+# now reverse the roles!
+# fit model1 using only train2 data
+model1_train2 <- glm(mi ~ waist + smoke + hdl, data = train2, family = "binomial")
+# take a peak
+model1_train2
+
+# now we will evaluate MSE in valid1
+# note we can still use the Psi1 function, but just change
+# the model statement
+Psi1_valid2W <- Psi1(new_features = valid2, model = model1_train2)
+# take a peak
+head(Psi1_valid2W)
+# compute the MSE
+mse_Psi1_valid2 <- mean((valid2$mi - Psi1_valid2W)^2)
+
+# average the two to get a cross-validated estimate of MSE
+cv_mse_Psi1 <- (mse_Psi1_valid1 + mse_Psi1_valid2) / 2
+
+#================================================
+# Exercise 3:
+#================================================
+# a. Compute the cross-validated MSE for model2.
+model2_train1 <- glm(mi ~ ., data = train1, family = "binomial")
+model2_train2 <- glm(mi ~ ., data = train2, family = "binomial")
+
+# b. How does it compare to MSE for model1?
+# c. What estimator would cross-validation have us select?
+```
+
+What about an ensemble estimator of the two? Recall that a stacked regression (aka a super learner) is a convex combination of multiple models. Here we demonstrate how to determine the weights that minimize cross-validated MSE over all convex combinations. 
+
+```{r ensemble1}
+# we need to define a new machine that takes both model1 and model2 
+# in and returns a weighted combination of their predictions
+Psi_sl <- function(new_features, model1, model2,
+                   model1_weight, model2_weight = 1 - model1_weight){
+  # make sure weights approximately sum to 1
+  stopifnot(abs(1 - model1_weight - model2_weight) < 1e-5)
+  # prediction from model 1 on new data
+  model1_prediction <- predict(model1, newdata = new_features, type = 'response')
+  # prediction from model 2 on new data
+  model2_prediction <- predict(model2, newdata = new_features, type = 'response')
+  # weighted combination
+  ensemble_prediction <- model1_weight * model1_prediction + 
+                            model2_weight * model2_prediction
+  return(as.numeric(ensemble_prediction))
+}
+
+# test it out on the first observation using full data models and equal weights
+# should be the same as 
+# 0.5 * Psi1(full_data[1,], model = model1) + 0.5 * Psi2(full_data[1,], model = model2)
+Psi_sl(new_features = full_data[1,], model1 = model1, model2 = model2,
+       model1_weight = 0.5)
+
+# try different weights
+Psi_sl(new_features = full_data[1,], model1 = model1, model2 = model2,
+       model1_weight = 0.25)
+
+# We could also apply this to the training data models. e.g., 
+# here we use model1 and model2 fit to training data
+Psi_sl(new_features = valid1[1,], model1 = model1_train1, model2 = model2_train1,
+       model1_weight = 0.5)
+
+# So, for a given set of weights, we could estimate a cross-validated MSE for 
+# the weight combination as follows. 
+Psi_sl_valid1W <- Psi_sl(new_features = valid1, 
+                          model1 = model1_train1, 
+                          model2 = model2_train1,
+                          model1_weight = 0.5)
+# compute the MSE
+mse_Psi_sl_valid1 <- mean((valid1$mi - Psi_sl_valid1W)^2)
+
+# now reverse the roles!
+Psi_sl_valid2W <- Psi_sl(new_features = valid2, 
+                       model1 = model1_train2,
+                       model2 = model2_train2,
+                       model1_weight = 0.5)
+# take a peak
+head(Psi_sl_valid2W)
+# compute the MSE
+mse_Psi_sl_valid2 <- mean((valid2$mi - Psi_sl_valid2W)^2)
+
+# average the two to get a cross-validated estimate of MSE
+cv_mse_Psi_sl <- (mse_Psi_sl_valid1 + mse_Psi_sl_valid2) / 2
+
+
+# Let's wrap all of these commands up in a function that computes
+# the cross-validated MSE for a given choice of model weights
+# Note: this is technically bad form for function writing, since I'm 
+# relying on model1 and model2 being available in the global 
+# environment and if not the function will break; however, for simplicity
+# I will ignore this issue. 
+
+compute_cv_mse <- function(model1_weight){
+  Psi_sl_valid1W <- Psi_sl(new_features = valid1, 
+                            model1 = model1_train1, 
+                            model2 = model2_train1,
+                            model1_weight = model1_weight)
+  # compute the MSE
+  mse_Psi_sl_valid1 <- mean((valid1$mi - Psi_sl_valid1W)^2)
+
+  # now reverse the roles!
+  Psi_sl_valid2W <- Psi_sl(new_features = valid2, 
+                         model1 = model1_train2,
+                         model2 = model2_train2,
+                         model1_weight = model1_weight)
+  # take a peak
+  head(Psi_sl_valid2W)
+  # compute the MSE
+  mse_Psi_sl_valid2 <- mean((valid2$mi - Psi_sl_valid2W)^2)
+
+  # average the two to get a cross-validated estimate of MSE
+  cv_mse_Psi_sl <- (mse_Psi_sl_valid1 + mse_Psi_sl_valid2) / 2
+  return(cv_mse_Psi_sl)
+}
+
+# Now, we can compute the MSE for a grid of model1_weight values
+many_different_weights <- seq(0, 1, length = 1000)
+mse_for_each_weight <- rep(NA, 1000)
+for(i in seq_len(1000)){
+  mse_for_each_weight[i] <- compute_cv_mse(many_different_weights[i])
+}
+# take a peak 
+head(mse_for_each_weight)
+# determine which weight led to the smallest cross-validated MSE
+min_idx <- which.min(mse_for_each_weight)
+opt_model1_weight <- many_different_weights[min_idx]
+
+# plot 
+plot(mse_for_each_weight ~ many_different_weights, type = "l", lwd = 2,
+     bty = "n", xlab = "Model 1 weight", ylab = "CV-MSE")
+# add a line at the minimum value
+abline(v = opt_model1_weight, lty = 3)
+```
+
+Note that we have now used the data to determine our ensemble weights and thus the in-sample error estimate for the ensemble is likely to be overly optimistic for the true MSE of the ensemble. We could use an outer layer of cross-validation to evaluate the ensembles performance. 
+
+```{r ensemble}
+#================================================
+# Exercise 4:
+#
+# a (BONUS) Determine the cross-validated MSE of
+# the super learner ensemble. 
+# Hint: Split the data into e.g., two pieces and in 
+# each piece run the above code to determine the
+# optimal ensemble. Then get predictions based on
+# that ensemble in the other piece. 
+#================================================
+
+```
+
+## The `SuperLearner` pacakge
+
+While this professor may have just made you code up your own cross-validation-based ensemble by hand, thankfully, others have written `R` packages that do this for us. We will discuss the `SuperLearner` package and how it can be used to fit CV-based ensembles or to tune particular machine learning algorithms. 
+
+We begin by illustrating the "default" functionality of the `SuperLearner` function. For the sake of computational expediency, we will initially consider only a simple library of algorithms: a main effects GLM and an unadjusted (i.e., intercept) model. Later, we will look at how these algorithms are constructed for usage with `SuperLearner`.
+
+```{r sl1, message=FALSE, cache=TRUE}
+# because cross-validation is used, we need to set to the seed to ensure reproducibility
+set.seed(1234)
+
+# execute the call to SuperLearner
+sl1 <- SuperLearner(
+  # Y is the outcome variable
+  Y = full_data$mi,
+  # X is a dataframe of features, in this case
+  # everything in full_data except for mi
+  X = full_data[,-ncol(full_data)], 
+  # newX will be discussed later, for now leave as NULL (default)
+  newX = NULL,
+  # family will be discussed in more detail when we see how wrappers
+  # are written, for now set to binomial() for 0/1 outcome
+  family = binomial(), 
+  # SL.library (for now) is specified as a vector of names of functions
+  # that implement the desired algorithms. SL.glm and SL.mean
+  # are included in the Super Learner package
+  SL.library = c("SL.glm","SL.mean"),
+  # method specifies how the ensembling is done, for now we will use
+  # the \sum_{k=1}^K \alpha_k f_{k,n} method by using the default
+  # option for method (method.NNLS)
+  method = "method.NNLS",
+  # id specifies a unique subject identifier so that whole subjects 
+  # are sampled in CV, not just rows of data. full_data only has one row 
+  # per subject, so OK to leave as NULL (default)
+  id = NULL, 
+  # verbose controls the printing of messages of SuperLearner's progress.
+  # We'll leave as FALSE (default) for now
+  verbose = FALSE, 
+  # control contains options related to logistic ensemble (trimLogit) 
+  # and whether to save the fit library to look at individual 
+  # algorithms later. We will leave as default
+  control = list(saveFitLibrary = TRUE, trimLogit = 0.001),
+  # cvControl specifies parameters related to cross validation. Of note
+  # the default is for V=10-fold cross validation. See ?SuperLearner
+  # for more details
+  cvControl = list(V = 10L, stratifyCV = FALSE, shuffle = TRUE, 
+                   validRows = NULL)
+)
+
+sl1
+```
+
+From the output, we see that `r names(which(sl1$cvRisk==min(sl1$cvRisk)))` had the lowest cross-validated risk and is thus the cross-validation-selected estimator (aka the discrete Super Learner). We will discuss why the name of each algorithm has been augmented with the suffix `_All` when we illustrate variable screening functions later in the document. 
+
+Predictions from the discrete and continuous Super Learner on the observed data can now be obtained as follows:
+
+```{r predsl1, message=FALSE, cache=TRUE, warning=FALSE}
+# default call to predict
+slPred <- predict(sl1)
+# slPred is a list with two components
+#   pred = continuous SL predictions
+#   library.predict = predictions from each algorithm
+
+# store the continuous SL predictions
+cslPred <- slPred$pred
+
+# get the discrete SL predictions
+dslPred <- slPred$library.predict[,which(sl1$cvRisk==min(sl1$cvRisk))]
+```
+
+We can also obtain predictions on a new observation: 
+
+```{r slPredictNew, message=FALSE}
+# generate a new observation set to the mean of each variable
+newObs <- data.frame(t(colMeans(full_data[,-ncol(full_data)])))
+
+# all predictions on newObs
+slPredNew <- predict(sl1,newdata=newObs)
+
+# continuous SL prediction on newObs
+cslPredNew <- slPredNew$pred
+
+# discrete SL prediction on newObs
+dslPredNew <- slPredNew$library.predict[,which.min(sl1$cvRisk)]
+```
+
+If one wishes to access the fitted object for any of the component algorithms (applied to all the data), this can be accessed through the `fitLibrary` component of the `SuperLearner` object. For example, to access the `glm` object from the `SL.glm` algorithm, we can use:
+
+```{r fitlib}
+# obtain gamma GLM with log-link fit
+glmObject <- sl1$fitLibrary$SL.glm$object
+
+# summarize the fit
+summary(glmObject)
+```
+
+## Writing algorithms for Super Learner
+
+The `SuperLearner` functions works by doing cross-validation of each algorithm that is included in the `SL.library` option. These character inputs correspond to functions that are included in the `SuperLearner` package that implement various machine learning algorithms. We can check the algorithms that are included in the `SuperLearner` by default: 
+
+```{r listwrap}
+listWrappers()
+```
+Note that both "prediction" and "screening"" algorithms are shown. We focus first on prediction algorithms; screening algorithms are discussed in the next section. Let's look at the guts of the `SL.glm` algorithm:
+
+```{r slglm}
+SL.glm
+```
+
+Note that `SL.glm` is a function that takes as input: `Y`, `X`, `newX`, `family`, `obsWeights`, and other arguments via `...`. The `family` option allows one to use `SL.glm` when the outcome is both binary and continuous. In this case, `SL.glm` with `family=gaussian()` will call `glm` with `family=gaussian()` (linear regression); with `family=binomial()` it calls `glm` with `family=binomial()` (logistic regression). 
+
+The output of the function must be in a specific format: a list with components `pred`, a vector of predictions computed on the `newX` object (not `X`! source of many errors in my life...), and `fit`, which contains anything that is (1) required for predicting new values later; or (2) desired for later access via the `fitLibrary` component of the `SuperLearner` object. Because this `fit` object may be used for prediction later, it is important to specify its class so that an S3 predict method can be used on the object later. Note that such a method is already included for `SL.glm`: 
+
+```{r predslglm}
+predict.SL.glm
+```
+
+This input/output structure is all that is needed to define a new prediction algorithm for `SuperLearner`. As an illustration, we could write a new algorithm specifying a our `glm` that used only `waist`, `smoke`, and `hdl`. 
+
+```{r newglm, message=FALSE}
+# the function must have named arguments Y, X, newX, family, obsWeights, but
+# could have other arguments as well. 
+SL.smallglm <- function(Y, X, newX, family, obsWeights, ...){
+
+  if(family$family == "gaussian"){
+    stop("We only care about using logistic regression right now.")
+  }
+
+  # the data that will be seen by SL.small glm will be a vector outcome
+  # Y and a data.frame of predictors X, which will in particular include
+  # columns named waist, smoke, hdl
+  model2 <- glm(Y ~ waist + smoke + hdl, data = X, family = binomial())
+  
+  # get predictions on newX object as we did in Psi1 above
+  pred <- predict(model2, newdata = newX, type = "response")
+  
+  # save the fit object
+  fit <- list(object = model2)
+  
+  # because this is simply a different form of glm, 
+  # we can use predict.SL.glm to get predictions back, 
+  # i.e. no need to write a new predict function
+  class(fit) <- "SL.glm"
+  
+  # out must be list with named objects pred (predictions on newX)
+  # and fit (anything needed to get predictions later)
+  out <- list(pred = pred, fit = fit)
+  return(out)
+}
+```
+We have now defined a new algorithm for use in the SuperLearner. 
+
+This new algorithms can now be added to the library we used previously: 
+
+```{r newsl, cache=TRUE, warning=FALSE}
+set.seed(1234)
+
+sl2 <- SuperLearner(
+  Y = full_data$mi,
+  X = full_data[,-ncol(full_data)],
+  SL.library = c("SL.glm","SL.smallglm"),
+  family = binomial()
+  )
+
+sl2
+```
+
+The weights may be different than those computed via grid search since (1) by default `SuperLearner` uses 10-fold cross-validation and (2) the ensemble for `family = binomial()` is done based on negative log-likelihood, not MSE. They should be ballpark similar though. 
+
+We can double check to make sure that `predict.SL.glm` works for our the new algorithm we defined by attempting to predict on a new observation:
+
+```{r newslpred}
+slPredNew2 <- predict(sl2, newdata = newObs)
+slPredNew2
+```
+
+## Machine learning algorithms included in the super learner
+
+We have been focusing on generalized linear models for simplicity; however, there are many more complex algorithms included in the super learner. We discussed several of these algorithms in class (e.g., random forest `SL.randomForest`, gradient boosting `SL.gbm`, neural networks `SL.nnet`). 
+
+We can look at each of these functions to see (1) what packages are needed to execute the function; (2) the syntax of a normal call to the function; and (3) what tuning parameters there are. For example, let's look at `SL.randomForest`
+
+```{r}
+SL.randomForest
+```
+
+The line `.SL.require("randomForest")` indicates that we need to have the `randomForest` `R` package installed to use this function. The calls to `randomForest` (`fit.rf <- ...`) illustrate the syntax of calls to randomForest. The other options that are passed from `SL.randomForest` to `randomForest` are the tuning parameters for the algorithm (`mtry`, `ntree`, `nodesize`, `maxnodes`, ...). These are generally given sane default values, but we may wish to include multiple choices as well. 
+
+The `SuperLearner` package can easily be used to implement a single method with different tuning parameter values. As an example, consider using random forests. We will consider three tuning parameters: the number of trees to build `ntree`, the size of the trees `nodesize`, and the number of randomly sampled covariates for each tree `mtry`.
+
+We can define a new function that uses a single set of values for these parameters: 
+
+```{r rf1, message=FALSE}
+# here we simply pass through these values to SL.randomForest
+SL.rf_m5_nt1000_ns3 <- function(..., mtry = 5, ntree = 1000, nodesize = 3){
+  SL.randomForest(..., mtry = mtry, ntree = ntree, nodesize = nodesize)
+}
+```
+
+We can also use a loop to define functions over a grid of tuning parameter values:
+
+```{r rf2, message=FALSE}
+tuneGrid <- expand.grid(mtry = c(3,5), ntree=c(500,1000), nodesize=c(1,3))
+
+for(i in seq(nrow(tuneGrid))) { 
+  eval(parse(text = paste0("SL.rf_m",tuneGrid[i,1],"_nt",tuneGrid[i,2],"_ns",tuneGrid[i,3], 
+                      "<- function(..., mtry = ", tuneGrid[i, 1], ", ntree = ", tuneGrid[i, 2], 
+                      ", nodesize = ", tuneGrid[i,3],") { SL.randomForest(..., mtry = mtry, ntree = ntree, nodesize=nodesize)}")))
+  }
+```
+
+We have now created eight new prediction algorithms with each combination of tuning parameters specified in `tuneGrid`. For example, we can look at the algorithm that uses `mtry=3`, `ntree=500`, and `nodesize=1`: 
+
+```{r exrf}
+SL.rf_m3_nt500_ns1
+```
+
+We can collect all of these algorithms by searching through `R` objects with a similar name:
+
+```{r allrf}
+# get vector of all objects in R
+allObjects <- ls()
+# search names of objects for 'SL.randomForest_m'
+allrfobjects <- grep("SL.rf_m",allObjects)
+# get only objects with 'SL.randomForest_m' in their name
+allRf <- allObjects[allrfobjects]
+allRf
+```
+
+We can now use Super Learner to evaluate the performance of the random forest method using various tuning parameter values:
+
+```{r rfsl, message=FALSE, warning=FALSE, cache=TRUE}
+# this will take a while since we are fitting 8x(10 + 1) 
+# random forests.
+rf.sl <- SuperLearner(
+  Y = full_data$mi, 
+  X = full_data[,-ncol(full_data)],
+  family = binomial(),
+  method="method.NNLS",
+  SL.library = allRf
+  )
+
+rf.sl
+```
+
+## Screening algorithms for the Super Learner
+We now discuss how screening algorithms can be utilized to create Super Learner libraries. As the name suggests, these are algorithms that define a screening step prior to the execution of the prediction algorithm. The `SuperLearner` function will apply this screening step in each of the V folds. The combination of screening algorithm and prediction algorithm defines a new algorithm. We can look at how screening algorithms are constructed for use with the `SuperLearner` package:
+
+```{r screenalg}
+write.screen.template()
+```
+
+Screening algorithms take the same input as prediction algorithms, but output a logical vector with `TRUE` indicating that a column of `X` should be used in the prediction step. To illustrate why these functions are useful, in our running example, consider the possibility of an interaction between treatment and SOFA score. If we are unsure of the existence of this interaction, we may wish to include algorithms that both do and do not account for this interaction. To construct a new library that includes algorithms both with and without interactions, we can make use of screening algorithms. 
+
+Let's write a screening algorithm that only includes demographic variables:
+
+```{r noint}
+demographics <- function(X,...){
+  returnCols <- rep(FALSE, ncol(X))
+  returnCols[names(X) %in% c("age","gend","race","hsed")] <- TRUE
+  return(returnCols)
+}
+```
+
+Now we can fit the SuperLearner using the two GLMs both with all variables and only demographic variables. The call to `SuperLearner` is nearly identical; however, we now specify `SL.library` as a list, where each component is a vector of the form `c(predictionAlgorithm,screeningAlgorithm)`. To include all the covariates, we specify the `All` screening algorithm that is included in the `SuperLearner` package.
+
+```{r intSL, cache=TRUE, warning=FALSE}
+set.seed(1234) 
+
+# Fit the Super Learner
+sl3 <- SuperLearner(
+  Y = full_data$mi,
+  X = full_data[,-ncol(full_data)],
+  SL.library=list(c("SL.glm","All"),
+                  c("SL.glm","demographics"),
+                  c("SL.mean","All"), # not adjusted, so doesn't matter
+                  c("SL.smallglm","All")),
+  family = binomial()
+  )
+
+sl3
+```
+
+Note that the output for `sl3` lists five algorithms: the three original algorithms each with the interaction (`_All`) and without (`_demographics`). Note that this explains why the output for `sl1` contained the `_All` addendum: by default `SuperLearner` uses all the `All` screening function to pass through all variables in `X` to the prediction algorithms. 
+
+This flexibility in combining screening and prediction algorithms to generate new algorithms allows one to easily implement a library containing a large number of candidate algorithms. Check out `listWrappers()` to see other screening functions that are useful for more high dimensional settings. 
+
+## Using different loss/ensemble functions
+
+So far, we have been focusing on using mean-squared error loss, by virtue of using the default `method=method.NNLS`. Because our outcome is binary, we may instead prefer the negative log-likelihood loss function instead. We can easily change our original call to `SuperLearner` to this loss function: 
+
+```{r nnloglSL, cache=TRUE, warning=FALSE}
+set.seed(1234)
+
+sl4 <- SuperLearner(
+  Y = full_data$mi,
+  X = full_data[,-ncol(full_data)], 
+  SL.library=c("SL.glm","SL.mean"),
+  method = "method.NNloglik",
+  family = binomial()
+  )
+
+sl4
+```
+
+We may wish instead to maximize AUC (equivalent to minimizing rank loss); for this, we can specify `method=method.AUC`:
+
+```{r aucSL, cache=TRUE, warning=FALSE}
+set.seed(1234)
+
+sl5 <- SuperLearner(
+  Y = full_data$mi,
+  X = full_data[,-ncol(full_data)], 
+  SL.library=c("SL.glm","SL.mean"),
+  method = "method.AUC",
+  family=binomial()
+  )
+
+sl5
+```
+
+Or we can even write our own method. The package contains a template for doing so. It requires a function that returns a list with three components: (1) `require` lists the packages needed to execute the functions; (2) `computeCoef` is a function that takes a specific input and returns a cross validated risk estimate and vector of weight coefficients corresponding to the $K$ algorithms in the library; (3) `computePred` a function that computes the ensemble prediction. 
+
+```{r methtemp, warning=FALSE}
+method.template
+```
+
+## Evaluating the Super Learner
+
+The `SuperLearner` package comes with an additional function to objectively evaluate the performance of the SuperLearner predictions relative to those from its component methods. This is achieved by adding an additional outer layer of V-fold cross-validation to the procedure. That is the data is split into, e.g. ten equally sized pieces and each algorithm is trained on nine-tenths of the data -- including the Super Learner, which itself uses 10-fold cross-validation -- and evaluated on the remaining piece. Each piece of data serves as the evaluation set once and the cross-validated risk of the Super Learner and each component algorithm is computed. 
+
+We can use the `CV.SuperLearer` function to evaluate our over-simplified library:
+
+```{r cvSuperLearner, message=FALSE, cache=TRUE, warning=FALSE}
+set.seed(1234)
+
+# fit cross-validated super learner
+cvsl1 <- CV.SuperLearner(
+  Y = full_data$mi, 
+  X = full_data[,-ncol(full_data)],
+  # V specifies the number of outer CV layers used to evalute
+  # the Super Learner (which by default uses 10-fold CV)
+  V = 10,
+  family = binomial(),
+  method="method.NNLS",
+  SL.library = c("SL.glm","SL.smallglm")
+)
+```
+
+The object itself is not all that informative:
+
+```{r cvObj}
+cvsl1
+```
+
+However, there is a nice plotting function to display the results:
+
+```{r cvPlot, message=FALSE}
+# plot cross-validated risk
+plot(cvsl1)
+```
+
+The plot shows the ordered cross-validated risk estimates and 95\% confidence intervals about these estimates for each of the candidate algorithms, in addition to the discrete and continuous Super Learner. 
+
+
