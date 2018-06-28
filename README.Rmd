@@ -25,9 +25,9 @@ You can execute the following commands to install the packages needed to complet
 ```{r installpack, message=FALSE}
 # if needed, install all the necessary pacakges to execute this demo
 pkgs <- c("SuperLearner", "randomForest", "RCurl", "MASS",
-          "ggplot2")
+          "ggplot2","nnls")
 installed_pacakges <- row.names(installed.packages())
-
+.libPaths("H:/")
 for(p in pkgs){
   # check if p is installed
   already_installed <- p %in% installed_pacakges 
