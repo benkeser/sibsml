@@ -610,9 +610,9 @@ body {
 <p>You can execute the following commands to install the packages needed to complete this demo.</p>
 <div class="sourceCode" id="cb1"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb1-1" data-line-number="1"><span class="co"># if needed, install all the necessary pacakges to execute this demo</span></a>
 <a class="sourceLine" id="cb1-2" data-line-number="2">pkgs &lt;-<span class="st"> </span><span class="kw">c</span>(<span class="st">&quot;SuperLearner&quot;</span>, <span class="st">&quot;randomForest&quot;</span>, <span class="st">&quot;RCurl&quot;</span>, <span class="st">&quot;MASS&quot;</span>,</a>
-<a class="sourceLine" id="cb1-3" data-line-number="3">          <span class="st">&quot;ggplot2&quot;</span>)</a>
+<a class="sourceLine" id="cb1-3" data-line-number="3">          <span class="st">&quot;ggplot2&quot;</span>,<span class="st">&quot;nnls&quot;</span>)</a>
 <a class="sourceLine" id="cb1-4" data-line-number="4">installed_pacakges &lt;-<span class="st"> </span><span class="kw">row.names</span>(<span class="kw">installed.packages</span>())</a>
-<a class="sourceLine" id="cb1-5" data-line-number="5"></a>
+<a class="sourceLine" id="cb1-5" data-line-number="5"><span class="co"># .libPaths(&quot;H:/&quot;)</span></a>
 <a class="sourceLine" id="cb1-6" data-line-number="6"><span class="cf">for</span>(p <span class="cf">in</span> pkgs){</a>
 <a class="sourceLine" id="cb1-7" data-line-number="7">  <span class="co"># check if p is installed</span></a>
 <a class="sourceLine" id="cb1-8" data-line-number="8">  already_installed &lt;-<span class="st"> </span>p <span class="op">%in%</span><span class="st"> </span>installed_pacakges </a>
@@ -698,100 +698,103 @@ body {
 <p>Our first exercise is to use logistic regression to predict myocardial infarction. We will consider two logistic regression models. The first regresses on <code>waist</code>, <code>smoke</code>, and <code>hdl</code>; the second regresses on all variables. We will fit these regression models using the full data and estimate their mean squared-error using the full data.</p>
 <p>First, we train the two logistic regressions using the full data and generate prediction functions (i.e., machines) from which we can generate new predictions.</p>
 <div class="sourceCode" id="cb4"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb4-1" data-line-number="1"><span class="co"># model 1 -- all variables</span></a>
-<a class="sourceLine" id="cb4-2" data-line-number="2"><span class="co"># the mi ~ . formula fits a main terms logistic regression model</span></a>
-<a class="sourceLine" id="cb4-3" data-line-number="3">model1 &lt;-<span class="st"> </span><span class="kw">glm</span>(mi <span class="op">~</span><span class="st"> </span>waist <span class="op">+</span><span class="st"> </span>smoke <span class="op">+</span><span class="st"> </span>hdl, <span class="dt">data =</span> full_data, <span class="dt">family =</span> <span class="st">&quot;binomial&quot;</span>)</a>
-<a class="sourceLine" id="cb4-4" data-line-number="4"><span class="co"># can look at the results</span></a>
-<a class="sourceLine" id="cb4-5" data-line-number="5"><span class="kw">summary</span>(model1)</a>
-<a class="sourceLine" id="cb4-6" data-line-number="6"><span class="co">#&gt; </span></a>
-<a class="sourceLine" id="cb4-7" data-line-number="7"><span class="co">#&gt; Call:</span></a>
-<a class="sourceLine" id="cb4-8" data-line-number="8"><span class="co">#&gt; glm(formula = mi ~ waist + smoke + hdl, family = &quot;binomial&quot;, </span></a>
-<a class="sourceLine" id="cb4-9" data-line-number="9"><span class="co">#&gt;     data = full_data)</span></a>
-<a class="sourceLine" id="cb4-10" data-line-number="10"><span class="co">#&gt; </span></a>
-<a class="sourceLine" id="cb4-11" data-line-number="11"><span class="co">#&gt; Deviance Residuals: </span></a>
-<a class="sourceLine" id="cb4-12" data-line-number="12"><span class="co">#&gt;     Min       1Q   Median       3Q      Max  </span></a>
-<a class="sourceLine" id="cb4-13" data-line-number="13"><span class="co">#&gt; -0.5804  -0.2736  -0.2338  -0.1998   2.9808  </span></a>
-<a class="sourceLine" id="cb4-14" data-line-number="14"><span class="co">#&gt; </span></a>
-<a class="sourceLine" id="cb4-15" data-line-number="15"><span class="co">#&gt; Coefficients:</span></a>
-<a class="sourceLine" id="cb4-16" data-line-number="16"><span class="co">#&gt;              Estimate Std. Error z value Pr(&gt;|z|)    </span></a>
-<a class="sourceLine" id="cb4-17" data-line-number="17"><span class="co">#&gt; (Intercept) -1.853886   0.601555  -3.082  0.00206 ** </span></a>
-<a class="sourceLine" id="cb4-18" data-line-number="18"><span class="co">#&gt; waist       -0.022654   0.005356  -4.229 2.34e-05 ***</span></a>
-<a class="sourceLine" id="cb4-19" data-line-number="19"><span class="co">#&gt; smoke        0.625000   0.223766   2.793  0.00522 ** </span></a>
-<a class="sourceLine" id="cb4-20" data-line-number="20"><span class="co">#&gt; hdl          0.008611   0.004338   1.985  0.04715 *  </span></a>
-<a class="sourceLine" id="cb4-21" data-line-number="21"><span class="co">#&gt; ---</span></a>
-<a class="sourceLine" id="cb4-22" data-line-number="22"><span class="co">#&gt; Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1</span></a>
-<a class="sourceLine" id="cb4-23" data-line-number="23"><span class="co">#&gt; </span></a>
-<a class="sourceLine" id="cb4-24" data-line-number="24"><span class="co">#&gt; (Dispersion parameter for binomial family taken to be 1)</span></a>
-<a class="sourceLine" id="cb4-25" data-line-number="25"><span class="co">#&gt; </span></a>
-<a class="sourceLine" id="cb4-26" data-line-number="26"><span class="co">#&gt;     Null deviance: 1280.4  on 4589  degrees of freedom</span></a>
-<a class="sourceLine" id="cb4-27" data-line-number="27"><span class="co">#&gt; Residual deviance: 1245.9  on 4586  degrees of freedom</span></a>
-<a class="sourceLine" id="cb4-28" data-line-number="28"><span class="co">#&gt; AIC: 1253.9</span></a>
-<a class="sourceLine" id="cb4-29" data-line-number="29"><span class="co">#&gt; </span></a>
-<a class="sourceLine" id="cb4-30" data-line-number="30"><span class="co">#&gt; Number of Fisher Scoring iterations: 6</span></a>
-<a class="sourceLine" id="cb4-31" data-line-number="31"><span class="co"># we can now use model1 to make a &quot;machine&quot;, i.e., a function </span></a>
-<a class="sourceLine" id="cb4-32" data-line-number="32"><span class="co"># that takes as input features of a new observation and outputs </span></a>
-<a class="sourceLine" id="cb4-33" data-line-number="33"><span class="co"># a predicted probability of say Psi1 </span></a>
-<a class="sourceLine" id="cb4-34" data-line-number="34">Psi1_longway &lt;-<span class="st"> </span><span class="cf">function</span>(new_waist, new_smoke, new_hdl, model){</a>
-<a class="sourceLine" id="cb4-35" data-line-number="35">  <span class="co"># extract beta hats from model</span></a>
-<a class="sourceLine" id="cb4-36" data-line-number="36">  beta0 &lt;-<span class="st"> </span>model<span class="op">$</span>coef[<span class="dv">1</span>]</a>
-<a class="sourceLine" id="cb4-37" data-line-number="37">  beta1 &lt;-<span class="st"> </span>model<span class="op">$</span>coef[<span class="dv">2</span>]</a>
-<a class="sourceLine" id="cb4-38" data-line-number="38">  beta2 &lt;-<span class="st"> </span>model<span class="op">$</span>coef[<span class="dv">3</span>]</a>
-<a class="sourceLine" id="cb4-39" data-line-number="39">  beta3 &lt;-<span class="st"> </span>model<span class="op">$</span>coef[<span class="dv">4</span>]</a>
-<a class="sourceLine" id="cb4-40" data-line-number="40">  <span class="co"># plogis is the inverse logit function</span></a>
-<a class="sourceLine" id="cb4-41" data-line-number="41">  <span class="co"># i.e., we compute expit(b0 + b1 * waist + ...)</span></a>
-<a class="sourceLine" id="cb4-42" data-line-number="42">  prediction &lt;-<span class="st"> </span><span class="kw">plogis</span>(beta0 <span class="op">+</span><span class="st"> </span>beta1 <span class="op">*</span><span class="st"> </span>new_waist <span class="op">+</span><span class="st"> </span>beta2 <span class="op">*</span><span class="st"> </span>new_smoke <span class="op">+</span><span class="st"> </span>beta3 <span class="op">*</span><span class="st"> </span>new_hdl)</a>
-<a class="sourceLine" id="cb4-43" data-line-number="43">  <span class="co"># return the prediction</span></a>
-<a class="sourceLine" id="cb4-44" data-line-number="44">  <span class="kw">return</span>(<span class="kw">as.numeric</span>(prediction))</a>
-<a class="sourceLine" id="cb4-45" data-line-number="45">}</a>
-<a class="sourceLine" id="cb4-46" data-line-number="46"></a>
-<a class="sourceLine" id="cb4-47" data-line-number="47"><span class="co"># try it out on some new data</span></a>
-<a class="sourceLine" id="cb4-48" data-line-number="48"><span class="kw">Psi1_longway</span>(<span class="dt">new_waist =</span> <span class="dv">90</span>, <span class="dt">new_smoke =</span> <span class="dv">0</span>, <span class="dt">new_hdl =</span> <span class="dv">50</span>, <span class="dt">model =</span> model1)</a>
-<a class="sourceLine" id="cb4-49" data-line-number="49"><span class="co">#&gt; [1] 0.03040785</span></a>
-<a class="sourceLine" id="cb4-50" data-line-number="50"><span class="kw">Psi1_longway</span>(<span class="dt">new_waist =</span> <span class="dv">100</span>, <span class="dt">new_smoke =</span> <span class="dv">0</span>, <span class="dt">new_hdl =</span> <span class="dv">40</span>, <span class="dt">model =</span> model1)</a>
-<a class="sourceLine" id="cb4-51" data-line-number="51"><span class="co">#&gt; [1] 0.0224266</span></a>
-<a class="sourceLine" id="cb4-52" data-line-number="52"><span class="kw">Psi1_longway</span>(<span class="dt">new_waist =</span> <span class="kw">mean</span>(full_data<span class="op">$</span>waist), </a>
-<a class="sourceLine" id="cb4-53" data-line-number="53">             <span class="dt">new_smoke =</span> <span class="dv">1</span>, </a>
-<a class="sourceLine" id="cb4-54" data-line-number="54">             <span class="dt">new_hdl =</span> <span class="kw">mean</span>(full_data<span class="op">$</span>hdl), <span class="dt">model =</span> model1)</a>
-<a class="sourceLine" id="cb4-55" data-line-number="55"><span class="co">#&gt; [1] 0.04830798</span></a>
-<a class="sourceLine" id="cb4-56" data-line-number="56"></a>
-<a class="sourceLine" id="cb4-57" data-line-number="57"><span class="co"># we can instead make use of the predict method for glm for a more </span></a>
-<a class="sourceLine" id="cb4-58" data-line-number="58"><span class="co"># concise version. here new_features is a data.frame a la full_data</span></a>
-<a class="sourceLine" id="cb4-59" data-line-number="59">Psi1 &lt;-<span class="st"> </span><span class="cf">function</span>(new_features, model){</a>
-<a class="sourceLine" id="cb4-60" data-line-number="60">  <span class="co"># call the predict method</span></a>
-<a class="sourceLine" id="cb4-61" data-line-number="61">  <span class="co"># type = &quot;response&quot; ensures we get back the expit of the linear predictor</span></a>
-<a class="sourceLine" id="cb4-62" data-line-number="62">  prediction &lt;-<span class="st"> </span><span class="kw">predict</span>(model, <span class="dt">newdata =</span> new_features, <span class="dt">type =</span> <span class="st">'response'</span>)</a>
-<a class="sourceLine" id="cb4-63" data-line-number="63">  <span class="kw">return</span>(<span class="kw">as.numeric</span>(prediction))</a>
-<a class="sourceLine" id="cb4-64" data-line-number="64">}</a>
-<a class="sourceLine" id="cb4-65" data-line-number="65"></a>
-<a class="sourceLine" id="cb4-66" data-line-number="66"><span class="co"># try it out on some new data</span></a>
-<a class="sourceLine" id="cb4-67" data-line-number="67">new_features1 &lt;-<span class="st"> </span><span class="kw">data.frame</span>(<span class="dt">waist =</span> <span class="dv">90</span>, <span class="dt">smoke =</span> <span class="dv">0</span>, <span class="dt">hdl =</span> <span class="dv">50</span>)</a>
-<a class="sourceLine" id="cb4-68" data-line-number="68"><span class="kw">Psi1</span>(<span class="dt">new_features =</span> new_features1, <span class="dt">model =</span> model1)</a>
-<a class="sourceLine" id="cb4-69" data-line-number="69"><span class="co">#&gt; [1] 0.03040785</span></a>
-<a class="sourceLine" id="cb4-70" data-line-number="70">new_features2 &lt;-<span class="st"> </span><span class="kw">data.frame</span>(<span class="dt">waist =</span> <span class="dv">100</span>, <span class="dt">smoke =</span> <span class="dv">0</span>, <span class="dt">hdl =</span> <span class="dv">40</span>)</a>
-<a class="sourceLine" id="cb4-71" data-line-number="71"><span class="kw">Psi1</span>(<span class="dt">new_features =</span> new_features2, <span class="dt">model =</span> model1)</a>
-<a class="sourceLine" id="cb4-72" data-line-number="72"><span class="co">#&gt; [1] 0.0224266</span></a>
-<a class="sourceLine" id="cb4-73" data-line-number="73"><span class="co"># also works with multiple rows</span></a>
-<a class="sourceLine" id="cb4-74" data-line-number="74">new_features3 &lt;-<span class="st"> </span><span class="kw">data.frame</span>(<span class="dt">waist =</span> <span class="kw">c</span>(<span class="dv">100</span>,<span class="dv">110</span>), <span class="dt">smoke =</span> <span class="kw">c</span>(<span class="dv">0</span>,<span class="dv">1</span>), <span class="dt">hdl =</span> <span class="kw">c</span>(<span class="dv">40</span>,<span class="dv">60</span>))</a>
-<a class="sourceLine" id="cb4-75" data-line-number="75"><span class="kw">Psi1</span>(<span class="dt">new_features =</span> new_features3, <span class="dt">model =</span> model1)</a>
-<a class="sourceLine" id="cb4-76" data-line-number="76"><span class="co">#&gt; [1] 0.0224266 0.0390102</span></a>
-<a class="sourceLine" id="cb4-77" data-line-number="77"></a>
-<a class="sourceLine" id="cb4-78" data-line-number="78"><span class="co"># model 2 -- all variables </span></a>
-<a class="sourceLine" id="cb4-79" data-line-number="79">model2 &lt;-<span class="st"> </span><span class="kw">glm</span>(mi <span class="op">~</span><span class="st"> </span>., <span class="dt">data =</span> full_data, <span class="dt">family =</span> <span class="st">&quot;binomial&quot;</span>)</a>
-<a class="sourceLine" id="cb4-80" data-line-number="80"></a>
-<a class="sourceLine" id="cb4-81" data-line-number="81"><span class="co">#================================================</span></a>
-<a class="sourceLine" id="cb4-82" data-line-number="82"><span class="co"># Exercise 1:</span></a>
-<a class="sourceLine" id="cb4-83" data-line-number="83"><span class="co">#================================================</span></a>
-<a class="sourceLine" id="cb4-84" data-line-number="84"><span class="co"># a. Write a function like Psi1 that predicts for </span></a>
-<a class="sourceLine" id="cb4-85" data-line-number="85"><span class="co"># new data based on model2.</span></a>
-<a class="sourceLine" id="cb4-86" data-line-number="86"><span class="co"># Psi2 &lt;- function(...){</span></a>
-<a class="sourceLine" id="cb4-87" data-line-number="87"><span class="co">#  </span></a>
-<a class="sourceLine" id="cb4-88" data-line-number="88"><span class="co">#</span></a>
-<a class="sourceLine" id="cb4-89" data-line-number="89"><span class="co">#}</span></a>
-<a class="sourceLine" id="cb4-90" data-line-number="90"><span class="co">#</span></a>
-<a class="sourceLine" id="cb4-91" data-line-number="91"><span class="co"># b. Use the function to predict on these the new</span></a>
-<a class="sourceLine" id="cb4-92" data-line-number="92"><span class="co"># features defined below in predict_me </span></a>
-<a class="sourceLine" id="cb4-93" data-line-number="93">predict_me &lt;-<span class="st"> </span><span class="kw">data.frame</span>(<span class="kw">t</span>(<span class="kw">colMeans</span>(full_data[,<span class="dv">1</span><span class="op">:</span>(<span class="kw">ncol</span>(full_data)<span class="op">-</span><span class="dv">1</span>)])))</a>
-<a class="sourceLine" id="cb4-94" data-line-number="94"><span class="co">#</span></a>
-<a class="sourceLine" id="cb4-95" data-line-number="95"><span class="co"># c (Bonus!). What values did I put in predict_me?</span></a></code></pre></div>
+<a class="sourceLine" id="cb4-2" data-line-number="2">model1 &lt;-<span class="st"> </span><span class="kw">glm</span>(mi <span class="op">~</span><span class="st"> </span>waist <span class="op">+</span><span class="st"> </span>smoke <span class="op">+</span><span class="st"> </span>hdl, <span class="dt">data =</span> full_data, <span class="dt">family =</span> <span class="st">&quot;binomial&quot;</span>)</a>
+<a class="sourceLine" id="cb4-3" data-line-number="3"><span class="co"># can look at the results</span></a>
+<a class="sourceLine" id="cb4-4" data-line-number="4"><span class="kw">summary</span>(model1)</a>
+<a class="sourceLine" id="cb4-5" data-line-number="5"><span class="co">#&gt; </span></a>
+<a class="sourceLine" id="cb4-6" data-line-number="6"><span class="co">#&gt; Call:</span></a>
+<a class="sourceLine" id="cb4-7" data-line-number="7"><span class="co">#&gt; glm(formula = mi ~ waist + smoke + hdl, family = &quot;binomial&quot;, </span></a>
+<a class="sourceLine" id="cb4-8" data-line-number="8"><span class="co">#&gt;     data = full_data)</span></a>
+<a class="sourceLine" id="cb4-9" data-line-number="9"><span class="co">#&gt; </span></a>
+<a class="sourceLine" id="cb4-10" data-line-number="10"><span class="co">#&gt; Deviance Residuals: </span></a>
+<a class="sourceLine" id="cb4-11" data-line-number="11"><span class="co">#&gt;     Min       1Q   Median       3Q      Max  </span></a>
+<a class="sourceLine" id="cb4-12" data-line-number="12"><span class="co">#&gt; -0.5804  -0.2736  -0.2338  -0.1998   2.9808  </span></a>
+<a class="sourceLine" id="cb4-13" data-line-number="13"><span class="co">#&gt; </span></a>
+<a class="sourceLine" id="cb4-14" data-line-number="14"><span class="co">#&gt; Coefficients:</span></a>
+<a class="sourceLine" id="cb4-15" data-line-number="15"><span class="co">#&gt;              Estimate Std. Error z value Pr(&gt;|z|)    </span></a>
+<a class="sourceLine" id="cb4-16" data-line-number="16"><span class="co">#&gt; (Intercept) -1.853886   0.601555  -3.082  0.00206 ** </span></a>
+<a class="sourceLine" id="cb4-17" data-line-number="17"><span class="co">#&gt; waist       -0.022654   0.005356  -4.229 2.34e-05 ***</span></a>
+<a class="sourceLine" id="cb4-18" data-line-number="18"><span class="co">#&gt; smoke        0.625000   0.223766   2.793  0.00522 ** </span></a>
+<a class="sourceLine" id="cb4-19" data-line-number="19"><span class="co">#&gt; hdl          0.008611   0.004338   1.985  0.04715 *  </span></a>
+<a class="sourceLine" id="cb4-20" data-line-number="20"><span class="co">#&gt; ---</span></a>
+<a class="sourceLine" id="cb4-21" data-line-number="21"><span class="co">#&gt; Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1</span></a>
+<a class="sourceLine" id="cb4-22" data-line-number="22"><span class="co">#&gt; </span></a>
+<a class="sourceLine" id="cb4-23" data-line-number="23"><span class="co">#&gt; (Dispersion parameter for binomial family taken to be 1)</span></a>
+<a class="sourceLine" id="cb4-24" data-line-number="24"><span class="co">#&gt; </span></a>
+<a class="sourceLine" id="cb4-25" data-line-number="25"><span class="co">#&gt;     Null deviance: 1280.4  on 4589  degrees of freedom</span></a>
+<a class="sourceLine" id="cb4-26" data-line-number="26"><span class="co">#&gt; Residual deviance: 1245.9  on 4586  degrees of freedom</span></a>
+<a class="sourceLine" id="cb4-27" data-line-number="27"><span class="co">#&gt; AIC: 1253.9</span></a>
+<a class="sourceLine" id="cb4-28" data-line-number="28"><span class="co">#&gt; </span></a>
+<a class="sourceLine" id="cb4-29" data-line-number="29"><span class="co">#&gt; Number of Fisher Scoring iterations: 6</span></a>
+<a class="sourceLine" id="cb4-30" data-line-number="30"><span class="co"># we can now use model1 to make a &quot;machine&quot;, i.e., a function </span></a>
+<a class="sourceLine" id="cb4-31" data-line-number="31"><span class="co"># that takes as input features of a new observation and outputs </span></a>
+<a class="sourceLine" id="cb4-32" data-line-number="32"><span class="co"># a predicted probability of say Psi1 </span></a>
+<a class="sourceLine" id="cb4-33" data-line-number="33">Psi1_longway &lt;-<span class="st"> </span><span class="cf">function</span>(new_waist, new_smoke, new_hdl, model){</a>
+<a class="sourceLine" id="cb4-34" data-line-number="34">  <span class="co"># extract beta hats from model</span></a>
+<a class="sourceLine" id="cb4-35" data-line-number="35">  beta0 &lt;-<span class="st"> </span>model<span class="op">$</span>coef[<span class="dv">1</span>]</a>
+<a class="sourceLine" id="cb4-36" data-line-number="36">  beta1 &lt;-<span class="st"> </span>model<span class="op">$</span>coef[<span class="dv">2</span>]</a>
+<a class="sourceLine" id="cb4-37" data-line-number="37">  beta2 &lt;-<span class="st"> </span>model<span class="op">$</span>coef[<span class="dv">3</span>]</a>
+<a class="sourceLine" id="cb4-38" data-line-number="38">  beta3 &lt;-<span class="st"> </span>model<span class="op">$</span>coef[<span class="dv">4</span>]</a>
+<a class="sourceLine" id="cb4-39" data-line-number="39">  <span class="co"># plogis is the inverse logit function</span></a>
+<a class="sourceLine" id="cb4-40" data-line-number="40">  <span class="co"># i.e., we compute expit(b0 + b1 * waist + ...)</span></a>
+<a class="sourceLine" id="cb4-41" data-line-number="41">  prediction &lt;-<span class="st"> </span><span class="kw">plogis</span>(beta0 <span class="op">+</span><span class="st"> </span>beta1 <span class="op">*</span><span class="st"> </span>new_waist <span class="op">+</span><span class="st"> </span>beta2 <span class="op">*</span><span class="st"> </span>new_smoke <span class="op">+</span><span class="st"> </span>beta3 <span class="op">*</span><span class="st"> </span>new_hdl)</a>
+<a class="sourceLine" id="cb4-42" data-line-number="42">  <span class="co"># return the prediction</span></a>
+<a class="sourceLine" id="cb4-43" data-line-number="43">  <span class="kw">return</span>(<span class="kw">as.numeric</span>(prediction))</a>
+<a class="sourceLine" id="cb4-44" data-line-number="44">}</a>
+<a class="sourceLine" id="cb4-45" data-line-number="45"></a>
+<a class="sourceLine" id="cb4-46" data-line-number="46"><span class="co"># try it out on some new data</span></a>
+<a class="sourceLine" id="cb4-47" data-line-number="47"><span class="kw">Psi1_longway</span>(<span class="dt">new_waist =</span> <span class="dv">90</span>, <span class="dt">new_smoke =</span> <span class="dv">0</span>, <span class="dt">new_hdl =</span> <span class="dv">50</span>, <span class="dt">model =</span> model1)</a>
+<a class="sourceLine" id="cb4-48" data-line-number="48"><span class="co">#&gt; [1] 0.03040785</span></a>
+<a class="sourceLine" id="cb4-49" data-line-number="49"><span class="kw">Psi1_longway</span>(<span class="dt">new_waist =</span> <span class="dv">100</span>, <span class="dt">new_smoke =</span> <span class="dv">0</span>, <span class="dt">new_hdl =</span> <span class="dv">40</span>, <span class="dt">model =</span> model1)</a>
+<a class="sourceLine" id="cb4-50" data-line-number="50"><span class="co">#&gt; [1] 0.0224266</span></a>
+<a class="sourceLine" id="cb4-51" data-line-number="51"><span class="kw">Psi1_longway</span>(<span class="dt">new_waist =</span> <span class="kw">mean</span>(full_data<span class="op">$</span>waist), </a>
+<a class="sourceLine" id="cb4-52" data-line-number="52">             <span class="dt">new_smoke =</span> <span class="dv">1</span>, </a>
+<a class="sourceLine" id="cb4-53" data-line-number="53">             <span class="dt">new_hdl =</span> <span class="kw">mean</span>(full_data<span class="op">$</span>hdl), <span class="dt">model =</span> model1)</a>
+<a class="sourceLine" id="cb4-54" data-line-number="54"><span class="co">#&gt; [1] 0.04830798</span></a>
+<a class="sourceLine" id="cb4-55" data-line-number="55"></a>
+<a class="sourceLine" id="cb4-56" data-line-number="56"><span class="co"># we can instead make use of the predict method for glm for a more </span></a>
+<a class="sourceLine" id="cb4-57" data-line-number="57"><span class="co"># concise version. here new_features is a data.frame a la full_data</span></a>
+<a class="sourceLine" id="cb4-58" data-line-number="58">Psi1 &lt;-<span class="st"> </span><span class="cf">function</span>(new_features, model){</a>
+<a class="sourceLine" id="cb4-59" data-line-number="59">  <span class="co"># call the predict method</span></a>
+<a class="sourceLine" id="cb4-60" data-line-number="60">  <span class="co"># type = &quot;response&quot; ensures we get back the expit of the linear predictor</span></a>
+<a class="sourceLine" id="cb4-61" data-line-number="61">  prediction &lt;-<span class="st"> </span><span class="kw">predict</span>(model, <span class="dt">newdata =</span> new_features, <span class="dt">type =</span> <span class="st">'response'</span>)</a>
+<a class="sourceLine" id="cb4-62" data-line-number="62">  <span class="kw">return</span>(<span class="kw">as.numeric</span>(prediction))</a>
+<a class="sourceLine" id="cb4-63" data-line-number="63">}</a>
+<a class="sourceLine" id="cb4-64" data-line-number="64"></a>
+<a class="sourceLine" id="cb4-65" data-line-number="65"><span class="co"># try it out on some new data</span></a>
+<a class="sourceLine" id="cb4-66" data-line-number="66">new_features1 &lt;-<span class="st"> </span><span class="kw">data.frame</span>(<span class="dt">waist =</span> <span class="dv">90</span>, <span class="dt">smoke =</span> <span class="dv">0</span>, <span class="dt">hdl =</span> <span class="dv">50</span>)</a>
+<a class="sourceLine" id="cb4-67" data-line-number="67"><span class="kw">Psi1</span>(<span class="dt">new_features =</span> new_features1, <span class="dt">model =</span> model1)</a>
+<a class="sourceLine" id="cb4-68" data-line-number="68"><span class="co">#&gt; [1] 0.03040785</span></a>
+<a class="sourceLine" id="cb4-69" data-line-number="69">new_features2 &lt;-<span class="st"> </span><span class="kw">data.frame</span>(<span class="dt">waist =</span> <span class="dv">100</span>, <span class="dt">smoke =</span> <span class="dv">0</span>, <span class="dt">hdl =</span> <span class="dv">40</span>)</a>
+<a class="sourceLine" id="cb4-70" data-line-number="70"><span class="kw">Psi1</span>(<span class="dt">new_features =</span> new_features2, <span class="dt">model =</span> model1)</a>
+<a class="sourceLine" id="cb4-71" data-line-number="71"><span class="co">#&gt; [1] 0.0224266</span></a>
+<a class="sourceLine" id="cb4-72" data-line-number="72"><span class="co"># also works with multiple rows</span></a>
+<a class="sourceLine" id="cb4-73" data-line-number="73">new_features3 &lt;-<span class="st"> </span><span class="kw">data.frame</span>(<span class="dt">waist =</span> <span class="kw">c</span>(<span class="dv">100</span>,<span class="dv">110</span>), <span class="dt">smoke =</span> <span class="kw">c</span>(<span class="dv">0</span>,<span class="dv">1</span>), <span class="dt">hdl =</span> <span class="kw">c</span>(<span class="dv">40</span>,<span class="dv">60</span>))</a>
+<a class="sourceLine" id="cb4-74" data-line-number="74"><span class="kw">Psi1</span>(<span class="dt">new_features =</span> new_features3, <span class="dt">model =</span> model1)</a>
+<a class="sourceLine" id="cb4-75" data-line-number="75"><span class="co">#&gt; [1] 0.0224266 0.0390102</span></a>
+<a class="sourceLine" id="cb4-76" data-line-number="76"></a>
+<a class="sourceLine" id="cb4-77" data-line-number="77"><span class="co"># the mi ~ . formula fits a main terms logistic regression model</span></a>
+<a class="sourceLine" id="cb4-78" data-line-number="78">model2 &lt;-<span class="st"> </span><span class="kw">glm</span>(mi <span class="op">~</span><span class="st"> </span>., <span class="dt">data =</span> full_data, <span class="dt">family =</span> <span class="st">&quot;binomial&quot;</span>)</a>
+<a class="sourceLine" id="cb4-79" data-line-number="79"></a>
+<a class="sourceLine" id="cb4-80" data-line-number="80"><span class="co">#================================================</span></a>
+<a class="sourceLine" id="cb4-81" data-line-number="81"><span class="co"># Exercise 1:</span></a>
+<a class="sourceLine" id="cb4-82" data-line-number="82"><span class="co">#================================================</span></a>
+<a class="sourceLine" id="cb4-83" data-line-number="83"><span class="co"># a. Write a function like Psi1 that predicts for </span></a>
+<a class="sourceLine" id="cb4-84" data-line-number="84"><span class="co"># new data based on model2.</span></a>
+<a class="sourceLine" id="cb4-85" data-line-number="85"><span class="co"># Solution: Simplest way is to just call Psi1 with</span></a>
+<a class="sourceLine" id="cb4-86" data-line-number="86"><span class="co"># model = model2!</span></a>
+<a class="sourceLine" id="cb4-87" data-line-number="87">Psi2 &lt;-<span class="st"> </span>Psi1</a>
+<a class="sourceLine" id="cb4-88" data-line-number="88"></a>
+<a class="sourceLine" id="cb4-89" data-line-number="89"><span class="co">#</span></a>
+<a class="sourceLine" id="cb4-90" data-line-number="90"><span class="co"># b. Use the function to predict on these the new</span></a>
+<a class="sourceLine" id="cb4-91" data-line-number="91"><span class="co"># features defined below in predict_me </span></a>
+<a class="sourceLine" id="cb4-92" data-line-number="92">predict_me &lt;-<span class="st"> </span><span class="kw">data.frame</span>(<span class="kw">t</span>(<span class="kw">colMeans</span>(full_data[,<span class="dv">1</span><span class="op">:</span>(<span class="kw">ncol</span>(full_data)<span class="op">-</span><span class="dv">1</span>)])))</a>
+<a class="sourceLine" id="cb4-93" data-line-number="93"><span class="co"># Solution: Call Psi2 with new_features = predict_me, model = model2</span></a>
+<a class="sourceLine" id="cb4-94" data-line-number="94"><span class="kw">Psi2</span>(<span class="dt">new_features =</span> predict_me, <span class="dt">model =</span> model2)</a>
+<a class="sourceLine" id="cb4-95" data-line-number="95"><span class="co">#&gt; [1] 0.009879685</span></a>
+<a class="sourceLine" id="cb4-96" data-line-number="96"><span class="co">#</span></a>
+<a class="sourceLine" id="cb4-97" data-line-number="97"><span class="co"># c (Bonus!). What values did I put in predict_me?</span></a>
+<a class="sourceLine" id="cb4-98" data-line-number="98"><span class="co"># Solution: It's the mean values for each feature of the data. </span></a></code></pre></div>
 <p>Now, we can compute the mean squared-error for the two logistic regressions using the full_data.</p>
 <div class="sourceCode" id="cb5"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb5-1" data-line-number="1"><span class="co"># use Psi1 to obtain predictions on the full data set</span></a>
 <a class="sourceLine" id="cb5-2" data-line-number="2">Psi1_allW &lt;-<span class="st"> </span><span class="kw">Psi1</span>(<span class="dt">new_features =</span> full_data, <span class="dt">model =</span> model1)</a>
@@ -821,11 +824,21 @@ body {
 <a class="sourceLine" id="cb6-18" data-line-number="18"><span class="co">#================================================</span></a>
 <a class="sourceLine" id="cb6-19" data-line-number="19"><span class="co"># a. Compute the estimated MSE for Psi2. </span></a>
 <a class="sourceLine" id="cb6-20" data-line-number="20"><span class="co"># mse_Psi2 &lt;- ... </span></a>
-<a class="sourceLine" id="cb6-21" data-line-number="21"><span class="co">#</span></a>
-<a class="sourceLine" id="cb6-22" data-line-number="22"><span class="co"># b. (Bonus!) Negative log-likelihood loss is an alternative</span></a>
-<a class="sourceLine" id="cb6-23" data-line-number="23"><span class="co"># loss function, L(psi,o) = -log(psi^y + (1-psi)^(1-y)). </span></a>
-<a class="sourceLine" id="cb6-24" data-line-number="24"><span class="co"># Compute the estimated average negative log-likelihood for</span></a>
-<a class="sourceLine" id="cb6-25" data-line-number="25"><span class="co"># both Psi1 and Psi2. </span></a></code></pre></div>
+<a class="sourceLine" id="cb6-21" data-line-number="21"><span class="co"># Solution: </span></a>
+<a class="sourceLine" id="cb6-22" data-line-number="22">Psi2_allW &lt;-<span class="st"> </span><span class="kw">Psi2</span>(<span class="dt">new_features =</span> full_data, <span class="dt">model =</span> model2)</a>
+<a class="sourceLine" id="cb6-23" data-line-number="23">mse_Psi2 &lt;-<span class="st"> </span><span class="kw">mean</span>((Y <span class="op">-</span><span class="st"> </span>Psi2_allW)<span class="op">^</span><span class="dv">2</span>) </a>
+<a class="sourceLine" id="cb6-24" data-line-number="24">mse_Psi2</a>
+<a class="sourceLine" id="cb6-25" data-line-number="25"><span class="co">#&gt; [1] 0.02536199</span></a>
+<a class="sourceLine" id="cb6-26" data-line-number="26"><span class="co">#</span></a>
+<a class="sourceLine" id="cb6-27" data-line-number="27"><span class="co"># b. (Bonus!) Negative log-likelihood loss is an alternative</span></a>
+<a class="sourceLine" id="cb6-28" data-line-number="28"><span class="co"># loss function, L(psi,o) = -log(psi(x)^y + (1-psi(x))^(1-y)),</span></a>
+<a class="sourceLine" id="cb6-29" data-line-number="29"><span class="co"># where o = (x,y).</span></a>
+<a class="sourceLine" id="cb6-30" data-line-number="30"><span class="co"># Compute the estimated average negative log-likelihood for</span></a>
+<a class="sourceLine" id="cb6-31" data-line-number="31"><span class="co"># both Psi1 and Psi2. </span></a>
+<a class="sourceLine" id="cb6-32" data-line-number="32"><span class="co">#</span></a>
+<a class="sourceLine" id="cb6-33" data-line-number="33">nloglik_Psi2 &lt;-<span class="st"> </span><span class="kw">mean</span>(<span class="op">-</span>(Y <span class="op">*</span><span class="st"> </span><span class="kw">log</span>(Psi2_allW) <span class="op">+</span><span class="st"> </span>(<span class="dv">1</span><span class="op">-</span>Y)<span class="op">*</span><span class="kw">log</span>(<span class="dv">1</span> <span class="op">-</span><span class="st"> </span>Psi2_allW)))</a>
+<a class="sourceLine" id="cb6-34" data-line-number="34">nloglik_Psi2</a>
+<a class="sourceLine" id="cb6-35" data-line-number="35"><span class="co">#&gt; [1] 0.1028601</span></a></code></pre></div>
 <p>As discussed in class, using the same data to train algorithms as to evaluate them leads to overly optimistic estimates of performance. This fact motivated the use of cross-validation. Here, we use two-fold cross-validation to estimate the MSE of the two logistic regression models.</p>
 <div class="sourceCode" id="cb7"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb7-1" data-line-number="1"><span class="co"># first we assign a split for each of the n observations</span></a>
 <a class="sourceLine" id="cb7-2" data-line-number="2"><span class="co"># here, we use the first half of data as one split, the second</span></a>
@@ -900,16 +913,29 @@ body {
 <a class="sourceLine" id="cb7-71" data-line-number="71"></a>
 <a class="sourceLine" id="cb7-72" data-line-number="72"><span class="co"># average the two to get a cross-validated estimate of MSE</span></a>
 <a class="sourceLine" id="cb7-73" data-line-number="73">cv_mse_Psi1 &lt;-<span class="st"> </span>(mse_Psi1_valid1 <span class="op">+</span><span class="st"> </span>mse_Psi1_valid2) <span class="op">/</span><span class="st"> </span><span class="dv">2</span></a>
-<a class="sourceLine" id="cb7-74" data-line-number="74"></a>
-<a class="sourceLine" id="cb7-75" data-line-number="75"><span class="co">#================================================</span></a>
-<a class="sourceLine" id="cb7-76" data-line-number="76"><span class="co"># Exercise 3:</span></a>
-<a class="sourceLine" id="cb7-77" data-line-number="77"><span class="co">#================================================</span></a>
-<a class="sourceLine" id="cb7-78" data-line-number="78"><span class="co"># a. Compute the cross-validated MSE for model2.</span></a>
-<a class="sourceLine" id="cb7-79" data-line-number="79">model2_train1 &lt;-<span class="st"> </span><span class="kw">glm</span>(mi <span class="op">~</span><span class="st"> </span>., <span class="dt">data =</span> train1, <span class="dt">family =</span> <span class="st">&quot;binomial&quot;</span>)</a>
-<a class="sourceLine" id="cb7-80" data-line-number="80">model2_train2 &lt;-<span class="st"> </span><span class="kw">glm</span>(mi <span class="op">~</span><span class="st"> </span>., <span class="dt">data =</span> train2, <span class="dt">family =</span> <span class="st">&quot;binomial&quot;</span>)</a>
-<a class="sourceLine" id="cb7-81" data-line-number="81"></a>
-<a class="sourceLine" id="cb7-82" data-line-number="82"><span class="co"># b. How does it compare to MSE for model1?</span></a>
-<a class="sourceLine" id="cb7-83" data-line-number="83"><span class="co"># c. What estimator would cross-validation have us select?</span></a></code></pre></div>
+<a class="sourceLine" id="cb7-74" data-line-number="74">cv_mse_Psi1</a>
+<a class="sourceLine" id="cb7-75" data-line-number="75"><span class="co">#&gt; [1] 0.03035721</span></a>
+<a class="sourceLine" id="cb7-76" data-line-number="76"><span class="co">#================================================</span></a>
+<a class="sourceLine" id="cb7-77" data-line-number="77"><span class="co"># Exercise 3:</span></a>
+<a class="sourceLine" id="cb7-78" data-line-number="78"><span class="co">#================================================</span></a>
+<a class="sourceLine" id="cb7-79" data-line-number="79"><span class="co"># a. Compute the cross-validated MSE for model2.</span></a>
+<a class="sourceLine" id="cb7-80" data-line-number="80">model2_train1 &lt;-<span class="st"> </span><span class="kw">glm</span>(mi <span class="op">~</span><span class="st"> </span>., <span class="dt">data =</span> train1, <span class="dt">family =</span> <span class="st">&quot;binomial&quot;</span>)</a>
+<a class="sourceLine" id="cb7-81" data-line-number="81">Psi2_valid1W &lt;-<span class="st"> </span><span class="kw">Psi2</span>(<span class="dt">new_features =</span> valid1, <span class="dt">model =</span> model2_train1)</a>
+<a class="sourceLine" id="cb7-82" data-line-number="82">mse_Psi2_valid1 &lt;-<span class="st"> </span><span class="kw">mean</span>((valid1<span class="op">$</span>mi <span class="op">-</span><span class="st"> </span>Psi2_valid1W)<span class="op">^</span><span class="dv">2</span>)</a>
+<a class="sourceLine" id="cb7-83" data-line-number="83"></a>
+<a class="sourceLine" id="cb7-84" data-line-number="84">model2_train2 &lt;-<span class="st"> </span><span class="kw">glm</span>(mi <span class="op">~</span><span class="st"> </span>., <span class="dt">data =</span> train2, <span class="dt">family =</span> <span class="st">&quot;binomial&quot;</span>)</a>
+<a class="sourceLine" id="cb7-85" data-line-number="85">Psi2_valid2W &lt;-<span class="st"> </span><span class="kw">Psi2</span>(<span class="dt">new_features =</span> valid2, <span class="dt">model =</span> model2_train2)</a>
+<a class="sourceLine" id="cb7-86" data-line-number="86">mse_Psi2_valid2 &lt;-<span class="st"> </span><span class="kw">mean</span>((valid2<span class="op">$</span>mi <span class="op">-</span><span class="st"> </span>Psi2_valid2W)<span class="op">^</span><span class="dv">2</span>)</a>
+<a class="sourceLine" id="cb7-87" data-line-number="87"></a>
+<a class="sourceLine" id="cb7-88" data-line-number="88">cv_mse_Psi2 &lt;-<span class="st"> </span>(mse_Psi2_valid1 <span class="op">+</span><span class="st"> </span>mse_Psi2_valid2) <span class="op">/</span><span class="st"> </span><span class="dv">2</span></a>
+<a class="sourceLine" id="cb7-89" data-line-number="89">cv_mse_Psi2</a>
+<a class="sourceLine" id="cb7-90" data-line-number="90"><span class="co">#&gt; [1] 0.02743314</span></a>
+<a class="sourceLine" id="cb7-91" data-line-number="91"><span class="co"># b. How does it compare to MSE for model1?</span></a>
+<a class="sourceLine" id="cb7-92" data-line-number="92">cv_mse_Psi2 <span class="op">&lt;</span><span class="st"> </span>cv_mse_Psi1</a>
+<a class="sourceLine" id="cb7-93" data-line-number="93"><span class="co">#&gt; [1] TRUE</span></a>
+<a class="sourceLine" id="cb7-94" data-line-number="94"></a>
+<a class="sourceLine" id="cb7-95" data-line-number="95"><span class="co"># c. What estimator would cross-validation have us select?</span></a>
+<a class="sourceLine" id="cb7-96" data-line-number="96"><span class="co"># Psi2 -- the full logistic regression</span></a></code></pre></div>
 <p>What about an ensemble estimator of the two? Recall that a stacked regression (aka a super learner) is a convex combination of multiple models. Here we demonstrate how to determine the weights that minimize cross-validated MSE over all convex combinations.</p>
 <div class="sourceCode" id="cb8"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb8-1" data-line-number="1"><span class="co"># we need to define a new machine that takes both model1 and model2 </span></a>
 <a class="sourceLine" id="cb8-2" data-line-number="2"><span class="co"># in and returns a weighted combination of their predictions</span></a>

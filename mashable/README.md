@@ -10,39 +10,31 @@ June 27, 2018
 The file `mashable/mashable.csv` in the GitHub repository contains 3,000
 observations on articles published by Mashable (www.mashable.com). The
 data set consists of 57 features that describe key aspects of the
-article (details below). Additionally there are two outcome variables:
-`shares` and `viral` – the latter is an indicator that an article was
-shared more than 10,000 times. Your task is to develop two prediction
-algorithms: one to predict the absolute number of times an article is
-shared and one to predict whether an article will go ‘viral’. For the
-former, you should consider building a prediction function that does
-well in terms of mean squared-error. For the latter, you should consider
-building a prediction function that does well in terms of negative
-log-likelihood loss.
+article (details below). The outcome variable is `viral` – an indicator
+that an article was shared more than 10,000 times. Your task is to
+develop a prediction algorithm for the probability that an article goes
+‘viral’. For simplicity, you should consider building a prediction
+function that does well in terms of mean squared-error.
 
-You need to turn in four things: 1. an `R` object for your continuous
-outcome prediction model that can be used to predict on new data (e.g.,
-`predict(you_object, newdata = ...))`); 2. an `R` object for your binary
-outcome prediction model that can be used to predict on new data; 3. an
+You need to turn in two things: 2. an `R` object for your binary outcome
+prediction algorithm that can be used to predict on new data; 3. an
 estimate of the true mean squared-error of your continuous outcome
-prediction model; 4. an estimate of the true mean negative
-log-likelihood of your binary outcome prediction model.
+prediction algorithm;
 
 Additionally, each group will make a short (2-3 minute presentation)
 detailing their approach and their results.
 
 ## Judging
 
-Your group will be ranked relative to the other groups on each of four
-criteria: 1. the true mean squared-error, as calculated on a held-out
-data set, of your continuous outcome prediction model; 2. the true
-negative log-likelihood, as calculated on a held-out data set, of your
-binary outcome prediction model; 3. how close your estimate of
-mean-squared error is to the truth (ranked as a percentage of the true
-value); 4. how close your estimate of negative log-likelihood is to the
-truth (ranked as a percentage of the true value).
+Your group will be ranked relative to the other groups on: 1. the true
+mean squared-error, as calculated on a held-out data set, of your
+prediction algorithm; 2. how close your estimate of mean-squared error
+is to the truth (ranked as a percentage of the true value);
 
-The group with the lowest average ranking in the four categories wins\!
+The group with the lowest average ranking in the two categories wins\!
+
+Tiebreaker: the true negative log-likelihood of your prediction
+algorithm.
 
 ## Reading in the data
 
@@ -131,32 +123,9 @@ A description of the features and outcomes.
 
 ## Hints
 
-Hint 1: Recall that if we have an outcome vector `Y` and a vector of
-predictions `p`, mean squared-error and negative log-likelihood may be
-computed as follows:
+Hint 1: If you are using the `SuperLearner` package, to use mean
+squared-error as your risk function, specify `method = "method.NNLS"`.
 
-``` r
-# make up 100 data points
-Y <- rnorm(100)
-p <- runif(100)
-
-# mean squared-error
-mse <- mean((Y - p)^2)
-
-# make up 100 binary outcomes and predictions
-Y <- rbinom(100, 1, 0.5)
-p <- runif(100, 0, 1)
-
-# negative log-likelihood
-nloglik <- - mean(Y*log(p) + (1-Y)*log(1-p))
-```
-
-Hint 2: If you are using the `SuperLearner` package, to use mean
-squared-error as your risk function, specify `method = "method.NNLS"` or
-`method = "method.CC_LS"`. To use negative log-likelihood as your risk
-function, specify `method = "method.NNloglik"` or `method =
-"method.CC_nloglik"`.
-
-Hint 3: If you are using the `SuperLearner` package, depending on what
+Hint 2: If you are using the `SuperLearner` package, depending on what
 algorithms you include, you may need to decrease the number of
 cross-validation folds via the `CV.control` option of `SuperLearner`.

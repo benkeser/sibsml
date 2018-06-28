@@ -18,9 +18,9 @@ complete this demo.
 ``` r
 # if needed, install all the necessary pacakges to execute this demo
 pkgs <- c("SuperLearner", "randomForest", "RCurl", "MASS",
-          "ggplot2")
+          "ggplot2","nnls")
 installed_pacakges <- row.names(installed.packages())
-
+# .libPaths("H:/")
 for(p in pkgs){
   # check if p is installed
   already_installed <- p %in% installed_pacakges 
@@ -132,7 +132,6 @@ generate new predictions.
 
 ``` r
 # model 1 -- all variables
-# the mi ~ . formula fits a main terms logistic regression model
 model1 <- glm(mi ~ waist + smoke + hdl, data = full_data, family = "binomial")
 # can look at the results
 summary(model1)
@@ -208,7 +207,7 @@ new_features3 <- data.frame(waist = c(100,110), smoke = c(0,1), hdl = c(40,60))
 Psi1(new_features = new_features3, model = model1)
 #> [1] 0.0224266 0.0390102
 
-# model 2 -- all variables 
+# the mi ~ . formula fits a main terms logistic regression model
 model2 <- glm(mi ~ ., data = full_data, family = "binomial")
 
 #================================================
@@ -216,16 +215,20 @@ model2 <- glm(mi ~ ., data = full_data, family = "binomial")
 #================================================
 # a. Write a function like Psi1 that predicts for 
 # new data based on model2.
-# Psi2 <- function(...){
-#  
-#
-#}
+# Solution: Simplest way is to just call Psi1 with
+# model = model2!
+Psi2 <- Psi1
+
 #
 # b. Use the function to predict on these the new
 # features defined below in predict_me 
 predict_me <- data.frame(t(colMeans(full_data[,1:(ncol(full_data)-1)])))
+# Solution: Call Psi2 with new_features = predict_me, model = model2
+Psi2(new_features = predict_me, model = model2)
+#> [1] 0.009879685
 #
 # c (Bonus!). What values did I put in predict_me?
+# Solution: It's the mean values for each feature of the data. 
 ```
 
 Now, we can compute the mean squared-error for the two logistic
@@ -264,11 +267,21 @@ mse_Psi1
 #================================================
 # a. Compute the estimated MSE for Psi2. 
 # mse_Psi2 <- ... 
+# Solution: 
+Psi2_allW <- Psi2(new_features = full_data, model = model2)
+mse_Psi2 <- mean((Y - Psi2_allW)^2) 
+mse_Psi2
+#> [1] 0.02536199
 #
 # b. (Bonus!) Negative log-likelihood loss is an alternative
-# loss function, L(psi,o) = -log(psi^y + (1-psi)^(1-y)). 
+# loss function, L(psi,o) = -log(psi(x)^y + (1-psi(x))^(1-y)),
+# where o = (x,y).
 # Compute the estimated average negative log-likelihood for
 # both Psi1 and Psi2. 
+#
+nloglik_Psi2 <- mean(-(Y * log(Psi2_allW) + (1-Y)*log(1 - Psi2_allW)))
+nloglik_Psi2
+#> [1] 0.1028601
 ```
 
 As discussed in class, using the same data to train algorithms as to
@@ -351,16 +364,29 @@ mse_Psi1_valid2 <- mean((valid2$mi - Psi1_valid2W)^2)
 
 # average the two to get a cross-validated estimate of MSE
 cv_mse_Psi1 <- (mse_Psi1_valid1 + mse_Psi1_valid2) / 2
-
+cv_mse_Psi1
+#> [1] 0.03035721
 #================================================
 # Exercise 3:
 #================================================
 # a. Compute the cross-validated MSE for model2.
 model2_train1 <- glm(mi ~ ., data = train1, family = "binomial")
-model2_train2 <- glm(mi ~ ., data = train2, family = "binomial")
+Psi2_valid1W <- Psi2(new_features = valid1, model = model2_train1)
+mse_Psi2_valid1 <- mean((valid1$mi - Psi2_valid1W)^2)
 
+model2_train2 <- glm(mi ~ ., data = train2, family = "binomial")
+Psi2_valid2W <- Psi2(new_features = valid2, model = model2_train2)
+mse_Psi2_valid2 <- mean((valid2$mi - Psi2_valid2W)^2)
+
+cv_mse_Psi2 <- (mse_Psi2_valid1 + mse_Psi2_valid2) / 2
+cv_mse_Psi2
+#> [1] 0.02743314
 # b. How does it compare to MSE for model1?
+cv_mse_Psi2 < cv_mse_Psi1
+#> [1] TRUE
+
 # c. What estimator would cross-validation have us select?
+# Psi2 -- the full logistic regression
 ```
 
 What about an ensemble estimator of the two? Recall that a stacked

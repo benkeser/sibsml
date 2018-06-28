@@ -605,12 +605,13 @@ body {
 <!-- README.md is generated from README.Rmd. Please edit that file -->
 
 <h2 id="assignment">Assignment</h2>
-<p>The file <code>mashable/mashable.csv</code> in the GitHub repository contains 3,000 observations on articles published by Mashable (<a href="http://www.mashable.com">www.mashable.com</a>). The data set consists of 57 features that describe key aspects of the article (details below). Additionally there are two outcome variables: <code>shares</code> and <code>viral</code> – the latter is an indicator that an article was shared more than 10,000 times. Your task is to develop two prediction algorithms: one to predict the absolute number of times an article is shared and one to predict whether an article will go ‘viral’. For the former, you should consider building a prediction function that does well in terms of mean squared-error. For the latter, you should consider building a prediction function that does well in terms of negative log-likelihood loss.</p>
-<p>You need to turn in four things: 1. an <code>R</code> object for your continuous outcome prediction model that can be used to predict on new data (e.g., <code>predict(you_object, newdata = ...))</code>); 2. an <code>R</code> object for your binary outcome prediction model that can be used to predict on new data; 3. an estimate of the true mean squared-error of your continuous outcome prediction model; 4. an estimate of the true mean negative log-likelihood of your binary outcome prediction model.</p>
+<p>The file <code>mashable/mashable.csv</code> in the GitHub repository contains 3,000 observations on articles published by Mashable (<a href="http://www.mashable.com">www.mashable.com</a>). The data set consists of 57 features that describe key aspects of the article (details below). The outcome variable is <code>viral</code> – an indicator that an article was shared more than 10,000 times. Your task is to develop a prediction algorithm for the probability that an article goes ‘viral’. For simplicity, you should consider building a prediction function that does well in terms of mean squared-error.</p>
+<p>You need to turn in two things: 2. an <code>R</code> object for your binary outcome prediction algorithm that can be used to predict on new data; 3. an estimate of the true mean squared-error of your continuous outcome prediction algorithm;</p>
 <p>Additionally, each group will make a short (2-3 minute presentation) detailing their approach and their results.</p>
 <h2 id="judging">Judging</h2>
-<p>Your group will be ranked relative to the other groups on each of four criteria: 1. the true mean squared-error, as calculated on a held-out data set, of your continuous outcome prediction model; 2. the true negative log-likelihood, as calculated on a held-out data set, of your binary outcome prediction model; 3. how close your estimate of mean-squared error is to the truth (ranked as a percentage of the true value); 4. how close your estimate of negative log-likelihood is to the truth (ranked as a percentage of the true value).</p>
-<p>The group with the lowest average ranking in the four categories wins!</p>
+<p>Your group will be ranked relative to the other groups on: 1. the true mean squared-error, as calculated on a held-out data set, of your prediction algorithm; 2. how close your estimate of mean-squared error is to the truth (ranked as a percentage of the true value);</p>
+<p>The group with the lowest average ranking in the two categories wins!</p>
+<p>Tiebreaker: the true negative log-likelihood of your prediction algorithm.</p>
 <h2 id="reading-in-the-data">Reading in the data</h2>
 <p>The data may be read into <code>R</code> using the following commands.</p>
 <div class="sourceCode" id="cb1"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb1-1" data-line-number="1"><span class="kw">library</span>(RCurl)</a>
@@ -683,22 +684,8 @@ body {
 <li><code>viral</code>: Did the article ‘go viral’ (more than 10k shares) (binary outcome)</li>
 </ul>
 <h2 id="hints">Hints</h2>
-<p>Hint 1: Recall that if we have an outcome vector <code>Y</code> and a vector of predictions <code>p</code>, mean squared-error and negative log-likelihood may be computed as follows:</p>
-<div class="sourceCode" id="cb2"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb2-1" data-line-number="1"><span class="co"># make up 100 data points</span></a>
-<a class="sourceLine" id="cb2-2" data-line-number="2">Y &lt;-<span class="st"> </span><span class="kw">rnorm</span>(<span class="dv">100</span>)</a>
-<a class="sourceLine" id="cb2-3" data-line-number="3">p &lt;-<span class="st"> </span><span class="kw">runif</span>(<span class="dv">100</span>)</a>
-<a class="sourceLine" id="cb2-4" data-line-number="4"></a>
-<a class="sourceLine" id="cb2-5" data-line-number="5"><span class="co"># mean squared-error</span></a>
-<a class="sourceLine" id="cb2-6" data-line-number="6">mse &lt;-<span class="st"> </span><span class="kw">mean</span>((Y <span class="op">-</span><span class="st"> </span>p)<span class="op">^</span><span class="dv">2</span>)</a>
-<a class="sourceLine" id="cb2-7" data-line-number="7"></a>
-<a class="sourceLine" id="cb2-8" data-line-number="8"><span class="co"># make up 100 binary outcomes and predictions</span></a>
-<a class="sourceLine" id="cb2-9" data-line-number="9">Y &lt;-<span class="st"> </span><span class="kw">rbinom</span>(<span class="dv">100</span>, <span class="dv">1</span>, <span class="fl">0.5</span>)</a>
-<a class="sourceLine" id="cb2-10" data-line-number="10">p &lt;-<span class="st"> </span><span class="kw">runif</span>(<span class="dv">100</span>, <span class="dv">0</span>, <span class="dv">1</span>)</a>
-<a class="sourceLine" id="cb2-11" data-line-number="11"></a>
-<a class="sourceLine" id="cb2-12" data-line-number="12"><span class="co"># negative log-likelihood</span></a>
-<a class="sourceLine" id="cb2-13" data-line-number="13">nloglik &lt;-<span class="st"> </span><span class="op">-</span><span class="st"> </span><span class="kw">mean</span>(Y<span class="op">*</span><span class="kw">log</span>(p) <span class="op">+</span><span class="st"> </span>(<span class="dv">1</span><span class="op">-</span>Y)<span class="op">*</span><span class="kw">log</span>(<span class="dv">1</span><span class="op">-</span>p))</a></code></pre></div>
-<p>Hint 2: If you are using the <code>SuperLearner</code> package, to use mean squared-error as your risk function, specify <code>method = &quot;method.NNLS&quot;</code> or <code>method = &quot;method.CC_LS&quot;</code>. To use negative log-likelihood as your risk function, specify <code>method = &quot;method.NNloglik&quot;</code> or <code>method = &quot;method.CC_nloglik&quot;</code>.</p>
-<p>Hint 3: If you are using the <code>SuperLearner</code> package, depending on what algorithms you include, you may need to decrease the number of cross-validation folds via the <code>CV.control</code> option of <code>SuperLearner</code>.</p>
+<p>Hint 1: If you are using the <code>SuperLearner</code> package, to use mean squared-error as your risk function, specify <code>method = &quot;method.NNLS&quot;</code>.</p>
+<p>Hint 2: If you are using the <code>SuperLearner</code> package, depending on what algorithms you include, you may need to decrease the number of cross-validation folds via the <code>CV.control</code> option of <code>SuperLearner</code>.</p>
 
 </body>
 </html>
